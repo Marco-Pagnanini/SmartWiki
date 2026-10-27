@@ -1,0 +1,14 @@
+# Variabili d'ambiente con le credenziali
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node
+node_modules/
+dist/
+
+# Sistema
+.DS_Store

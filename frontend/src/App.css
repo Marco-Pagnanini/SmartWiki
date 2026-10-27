@@ -1,0 +1,34 @@
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.app h1 {
+  font-size: 4rem;
+  margin: 0 0 1rem;
+}
+
+.status {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.status-loading {
+  color: #666;
+}
+
+.status-ok {
+  color: #1a7f37;
+}
+
+.status-error {
+  color: #cf222e;
+}
