@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "panels": [
+    {
+      "id": "term-eae8",
+      "title": "Claude",
+      "position": {
+        "x": 440,
+        "y": -290
+      },
+      "size": {
+        "width": 640,
+        "height": 400
+      },
+      "version": 1,
+      "updatedAt": "2026-10-29T13:03:30.922Z",
+      "type": "terminal",
+      "mode": "claude",
+      "cwd": ".",
+      "claudeSessionId": "c52f01a1-1917-46d6-b99b-63e787ad7ec4",
+      "claudeName": "Claude"
+    },
+    {
+      "id": "arch-1f1b",
+      "title": "Architettura",
+      "position": {
+        "x": -449,
+        "y": -149
+      },
+      "size": {
+        "width": 640,
+        "height": 480
+      },
+      "version": 6,
+      "updatedAt": "2026-10-29T13:06:24.314Z",
+      "type": "architecture"
+    },
+    {
+      "id": "arch-5c0f",
+      "title": "Architettura 2",
+      "position": {
+        "x": -444,
+        "y": -790
+      },
+      "size": {
+        "width": 640,
+        "height": 480
+      },
+      "version": 12,
+      "updatedAt": "2026-10-29T13:15:36.246Z",
+      "type": "architecture"
+    },
+    {
+      "id": "md-5292",
+      "title": "ARCHITECTURE.md",
+      "position": {
+        "x": 1293,
+        "y": -872
+      },
+      "size": {
+        "width": 480,
+        "height": 560
+      },
+      "version": 2,
+      "updatedAt": "2026-10-29T13:09:33.452Z",
+      "type": "markdown",
+      "filePath": "ARCHITECTURE.md"
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn-f51d",
+      "source": "term-eae8",
+      "target": "arch-1f1b",
+      "createdAt": "2026-10-29T13:03:46.083Z"
+    },
+    {
+      "id": "conn-63d5",
+      "source": "arch-1f1b",
+      "target": "term-eae8",
+      "createdAt": "2026-10-29T13:03:52.013Z"
+    },
+    {
+      "id": "conn-81db",
+      "source": "arch-5c0f",
+      "target": "term-eae8",
+      "createdAt": "2026-10-29T13:07:45.895Z"
+    },
+    {
+      "id": "conn-3f64",
+      "source": "term-eae8",
+      "target": "arch-5c0f",
+      "createdAt": "2026-10-29T13:07:48.729Z"
+    },
+    {
+      "id": "conn-c39f",
+      "source": "term-eae8",
+      "target": "md-5292",
+      "createdAt": "2026-10-29T13:08:05.528Z"
+    },
+    {
+      "id": "conn-399d",
+      "source": "md-5292",
+      "target": "term-eae8",
+      "createdAt": "2026-10-29T13:08:11.911Z"
+    }
+  ],
+  "viewport": {
+    "x": 434.29372710186004,
+    "y": 527.8970438576146,
+    "zoom": 0.5752215110601916
+  }
+}

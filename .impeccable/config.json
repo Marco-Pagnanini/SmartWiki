@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "frontend/src/App.css"
+        ],
+        "createdAt": "2026-10-28T07:40:05.809Z",
+        "reason": "user asked for a Gemini-identical chat UI; the gradient greeting is part of that requested look"
+      }
+    ]
+  }
+}

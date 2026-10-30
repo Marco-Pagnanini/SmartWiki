@@ -1,0 +1,249 @@
+{
+  "schemaVersion": 1,
+  "title": "Architettura 2 - Microservizi",
+  "nodes": [
+    {
+      "id": "user",
+      "kind": "client",
+      "label": "Utente (browser)",
+      "position": {
+        "x": 0,
+        "y": 200
+      }
+    },
+    {
+      "id": "web",
+      "kind": "service",
+      "label": "web (frontend)",
+      "tech": "React 19 + Vite, nginx:alpine, :3000",
+      "notes": "Chatbot UI. Serve la build statica e fa proxy di /api/ verso il gateway (timeout 180s).",
+      "position": {
+        "x": 260,
+        "y": 200
+      }
+    },
+    {
+      "id": "gateway",
+      "kind": "api",
+      "label": "gateway",
+      "tech": "FastAPI, :8000",
+      "notes": "Unico entry point pubblico. POST /api/chat (valida ChatRequest, 503 senza chiave, 502 su errore Claude), GET /api/health aggregato. CORS. Punto dove aggiungere auth.",
+      "position": {
+        "x": 540,
+        "y": 200
+      }
+    },
+    {
+      "id": "orchestrator",
+      "kind": "service",
+      "label": "orchestrator-service",
+      "tech": "FastAPI + agent-runtime, POST /run",
+      "notes": "Agente principale: conversazione con history, decide la delega. Tool ask_researcher e ask_archivist diventano chiamate HTTP ai servizi agente. Non accede ai dati.",
+      "position": {
+        "x": 820,
+        "y": 200
+      }
+    },
+    {
+      "id": "research",
+      "kind": "service",
+      "label": "research-service",
+      "tech": "FastAPI + agent-runtime, POST /run",
+      "notes": "Agente researcher, sola lettura. Tool MCP consentito: get_document_by_name.",
+      "position": {
+        "x": 1430,
+        "y": -153
+      }
+    },
+    {
+      "id": "archivist",
+      "kind": "service",
+      "label": "archivist-service",
+      "tech": "FastAPI + agent-runtime, POST /run",
+      "notes": "Agente archivist, sola creazione. Tool MCP consentito: add_document.",
+      "position": {
+        "x": 920,
+        "y": 595
+      }
+    },
+    {
+      "id": "agent_runtime",
+      "kind": "other",
+      "label": "agent-runtime (libreria)",
+      "tech": "pacchetto Python condiviso",
+      "notes": "run_agent (loop max 10 turni), client MCP (connect, get_tools, call_tool), config Claude. Incluso nei tre servizi agente, non e' un servizio.",
+      "position": {
+        "x": 1044,
+        "y": -43
+      }
+    },
+    {
+      "id": "doc_service",
+      "kind": "service",
+      "label": "doc-service",
+      "tech": "FastAPI + MCPServer, /mcp (streamable HTTP stateless)",
+      "notes": "Dominio documenti. Tool MCP add_document e get_document_by_name, service layer, entity Doc, sessioni SQLAlchemy, Alembic. Unico proprietario del database.",
+      "position": {
+        "x": 1480,
+        "y": 54
+      }
+    },
+    {
+      "id": "postgres",
+      "kind": "database",
+      "label": "PostgreSQL (documents)",
+      "tech": "pgvector/pgvector:pg17, :5432",
+      "notes": "Tabella documents (id UUID, name_of_file unique, group_number indicizzato, summary). Accessibile solo da doc-service. pgvector pronto per ricerca semantica.",
+      "position": {
+        "x": 1737,
+        "y": 199
+      }
+    },
+    {
+      "id": "claude_api",
+      "kind": "external",
+      "label": "API Anthropic (Claude)",
+      "tech": "claude-haiku-5-5, effort low",
+      "notes": "Chiamata da orchestrator, research e archivist. Ognuno usa la propria ANTHROPIC_API_KEY.",
+      "position": {
+        "x": 738,
+        "y": -133
+      }
+    },
+    {
+      "id": "compose",
+      "kind": "other",
+      "label": "Docker Compose",
+      "tech": "docker-compose.yml",
+      "notes": "Un container per servizio: web, gateway, orchestrator, research, archivist, doc-service, postgres. Rete interna: solo web e gateway esposti.",
+      "position": {
+        "x": 0,
+        "y": 440
+      }
+    },
+    {
+      "id": "servizio",
+      "kind": "service",
+      "label": "Servizio",
+      "position": {
+        "x": -103,
+        "y": -726
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_user_web",
+      "from": "user",
+      "to": "web",
+      "label": "usa la chat",
+      "protocol": "HTTP :3000"
+    },
+    {
+      "id": "e_web_gateway",
+      "from": "web",
+      "to": "gateway",
+      "label": "POST /api/chat",
+      "protocol": "HTTP/JSON"
+    },
+    {
+      "id": "e_gateway_orch",
+      "from": "gateway",
+      "to": "orchestrator",
+      "label": "message + history",
+      "protocol": "HTTP/JSON"
+    },
+    {
+      "id": "e_orch_research",
+      "from": "orchestrator",
+      "to": "research",
+      "label": "ask_researcher (task)",
+      "protocol": "HTTP/JSON"
+    },
+    {
+      "id": "e_orch_archivist",
+      "from": "orchestrator",
+      "to": "archivist",
+      "label": "ask_archivist (task)",
+      "protocol": "HTTP/JSON"
+    },
+    {
+      "id": "e_research_doc",
+      "from": "research",
+      "to": "doc_service",
+      "label": "get_document_by_name",
+      "protocol": "MCP /mcp"
+    },
+    {
+      "id": "e_archivist_doc",
+      "from": "archivist",
+      "to": "doc_service",
+      "label": "add_document",
+      "protocol": "MCP /mcp"
+    },
+    {
+      "id": "e_doc_pg",
+      "from": "doc_service",
+      "to": "postgres",
+      "label": "SQL + migrazioni Alembic",
+      "protocol": "psycopg 3"
+    },
+    {
+      "id": "e_orch_claude",
+      "from": "orchestrator",
+      "to": "claude_api",
+      "label": "tool use loop",
+      "protocol": "HTTPS"
+    },
+    {
+      "id": "e_research_claude",
+      "from": "research",
+      "to": "claude_api",
+      "label": "tool use loop",
+      "protocol": "HTTPS"
+    },
+    {
+      "id": "e_archivist_claude",
+      "from": "archivist",
+      "to": "claude_api",
+      "label": "tool use loop",
+      "protocol": "HTTPS"
+    },
+    {
+      "id": "e_runtime_orch",
+      "from": "agent_runtime",
+      "to": "orchestrator",
+      "label": "usata da"
+    },
+    {
+      "id": "e_runtime_research",
+      "from": "agent_runtime",
+      "to": "research",
+      "label": "usata da"
+    },
+    {
+      "id": "e_runtime_archivist",
+      "from": "agent_runtime",
+      "to": "archivist",
+      "label": "usata da"
+    },
+    {
+      "id": "e_compose_web",
+      "from": "compose",
+      "to": "web",
+      "label": "avvia"
+    },
+    {
+      "id": "e_compose_doc",
+      "from": "compose",
+      "to": "doc_service",
+      "label": "avvia"
+    },
+    {
+      "id": "e_compose_pg",
+      "from": "compose",
+      "to": "postgres",
+      "label": "avvia"
+    }
+  ]
+}

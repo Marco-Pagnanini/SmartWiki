@@ -39,7 +39,7 @@ docker compose down -v
 
 ## Sviluppo
 
-**Backend:** il codice in `backend/app` è montato nel container e uvicorn gira con `--reload`, quindi ogni modifica viene ricaricata automaticamente, senza ricostruire l'immagine.
+**Backend:** la cartella `backend` è montata nel container e uvicorn gira con `--reload`, quindi ogni modifica viene ricaricata automaticamente, senza ricostruire l'immagine.
 
 **Frontend fuori da Docker:** con i container avviati, in un altro terminale:
 
@@ -48,3 +48,21 @@ cd frontend && npm install && npm run dev
 ```
 
 L'app sarà su http://localhost:5173; le chiamate a `/api` vengono inoltrate al backend su `localhost:8000` dal proxy di Vite.
+
+## Migrazioni del database (Alembic)
+
+Le migrazioni mancanti vengono applicate in automatico a ogni avvio del backend.
+
+Dopo aver creato o modificato un'entity, genera la migrazione:
+
+```bash
+docker compose exec backend alembic revision --autogenerate -m "descrizione della modifica"
+```
+
+Il file viene creato in `backend/alembic/versions/`: controllalo, poi applicalo con:
+
+```bash
+docker compose exec backend alembic upgrade head
+```
+
+Ogni nuovo file che contiene entity va importato in `backend/alembic/env.py`, altrimenti Alembic non vede le sue tabelle.

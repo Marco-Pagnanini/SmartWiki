@@ -23,10 +23,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # Codice montato come volume + --reload: le modifiche si vedono subito
+    # Tutta la cartella backend montata come volume + --reload: le modifiche
+    # al codice si vedono subito e i file creati da Alembic finiscono sul Mac
     volumes:
-      - ./backend/app:/app/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      - ./backend:/app
+    # All'avvio applica le migrazioni mancanti, poi avvia il server
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --timeout-graceful-shutdown 3"
 
   frontend:
     build: ./frontend

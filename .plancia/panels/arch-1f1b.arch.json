@@ -1,0 +1,431 @@
+{
+  "schemaVersion": 1,
+  "title": "Architettura SmartWiki",
+  "nodes": [
+    {
+      "id": "user",
+      "kind": "client",
+      "label": "Utente (browser)",
+      "notes": "Usa la chat su http://localhost:3000 (Docker) o http://localhost:5173 (npm run dev).",
+      "position": {
+        "x": -124,
+        "y": 238
+      }
+    },
+    {
+      "id": "frontend",
+      "kind": "service",
+      "label": "Frontend React",
+      "tech": "React 19 + TypeScript + Vite 8",
+      "notes": "App.tsx: interfaccia chatbot in stile Gemini con tema struzzo. Stato locale (messages, input, loading), mini renderer Markdown, POST /api/chat con message + history.",
+      "position": {
+        "x": 260,
+        "y": 300
+      }
+    },
+    {
+      "id": "nginx",
+      "kind": "service",
+      "label": "Nginx",
+      "tech": "nginx:alpine, porta 3000->80",
+      "notes": "Serve la build statica (multi-stage Dockerfile node:22 -> nginx). Reverse proxy di /api/ verso backend:8000 con proxy_read_timeout 180s (gli agenti possono impiegare decine di secondi). Fallback su index.html. In dev il proxy e' quello di Vite.",
+      "position": {
+        "x": 260,
+        "y": 120
+      }
+    },
+    {
+      "id": "fastapi",
+      "kind": "api",
+      "label": "Backend FastAPI",
+      "tech": "Python 3.12, FastAPI 0.162, uvicorn --reload, porta 8000",
+      "notes": "app/main.py: lifespan che avvia il session manager MCP, CORS (CORS_ORIGINS, serve solo con npm run dev), router health e chat, mount del server MCP su '/' per ultimo.",
+      "position": {
+        "x": 540,
+        "y": 300
+      }
+    },
+    {
+      "id": "health_api",
+      "kind": "api",
+      "label": "API Health",
+      "tech": "GET /api/health, GET /api/health/db",
+      "notes": "Verifica backend attivo e database raggiungibile (SELECT 1, 503 se non risponde).",
+      "position": {
+        "x": 540,
+        "y": 520
+      }
+    },
+    {
+      "id": "chat_api",
+      "kind": "api",
+      "label": "API Chat",
+      "tech": "POST /api/chat",
+      "notes": "app/api/chat.py: valida ChatRequest (message max 4000, history max 50), 503 se manca ANTHROPIC_API_KEY, 502 su anthropic.APIError. Risponde {reply}.",
+      "position": {
+        "x": 540,
+        "y": 120
+      }
+    },
+    {
+      "id": "doc_api",
+      "kind": "api",
+      "label": "API Doc (bozza)",
+      "tech": "/api/doc",
+      "notes": "app/api/doc.py: file incompleto, router con un @router.get('') senza funzione. Non e' registrato in main.py.",
+      "position": {
+        "x": 540,
+        "y": 680
+      }
+    },
+    {
+      "id": "orchestrator",
+      "kind": "service",
+      "label": "Orchestrator",
+      "tech": "agents/orchestrator.py",
+      "notes": "Agente principale: dialoga con l'utente (con history), decide a quale sub agente delegare. Espone ask_researcher e ask_archivist come local_tools Python. Non tocca direttamente la wiki.",
+      "position": {
+        "x": 820,
+        "y": 120
+      }
+    },
+    {
+      "id": "researcher",
+      "kind": "service",
+      "label": "Agente Researcher",
+      "tech": "agents/researcher.py",
+      "notes": "Sola lettura. Tool MCP consentito: get_document_by_name (ricerca per nome file esatto).",
+      "position": {
+        "x": 1207,
+        "y": -108
+      }
+    },
+    {
+      "id": "archivist",
+      "kind": "service",
+      "label": "Agente Archivist (wiki)",
+      "tech": "agents/wiki.py",
+      "notes": "Sola creazione. Tool MCP consentito: add_document.",
+      "position": {
+        "x": 1097,
+        "y": 366
+      }
+    },
+    {
+      "id": "runner",
+      "kind": "service",
+      "label": "Agent runner",
+      "tech": "agents/runner.py (AsyncAnthropic)",
+      "notes": "run_agent: loop fino a MAX_TURNS=10. Chiama Claude con tools = tool MCP filtrati + local_tools, esegue i tool_use, rimanda i tool_result. Gli errori dei sub agenti diventano tool_result is_error.",
+      "position": {
+        "x": 925,
+        "y": 287
+      }
+    },
+    {
+      "id": "mcp_client",
+      "kind": "service",
+      "label": "MCP client",
+      "tech": "agents/mcp_client.py (mcp.Client)",
+      "notes": "connect(), get_tools() (converte i tool MCP nel formato API Claude, filtro allowed) e call_tool(). Si collega a MCP_URL.",
+      "position": {
+        "x": 820,
+        "y": 520
+      }
+    },
+    {
+      "id": "mcp_server",
+      "kind": "api",
+      "label": "Server MCP",
+      "tech": "MCPServer, streamable HTTP stateless, /mcp",
+      "notes": "app/mcp_server.py: istanza mcp montata su FastAPI. I moduli con @mcp.tool() vanno importati in main.py.",
+      "position": {
+        "x": 820,
+        "y": 720
+      }
+    },
+    {
+      "id": "mcp_tools",
+      "kind": "service",
+      "label": "Tool MCP documenti",
+      "tech": "tools/doc.py",
+      "notes": "add_document (nome univoco, group_number >= 1, summary max 2000; ToolError se esiste) e get_document_by_name (ToolError se assente). Aprono una SessionLocal per chiamata.",
+      "position": {
+        "x": 1100,
+        "y": 720
+      }
+    },
+    {
+      "id": "doc_service",
+      "kind": "service",
+      "label": "Service documenti",
+      "tech": "service/doc.py",
+      "notes": "create_doc, get_doc, get_doc_by_name: logica di accesso ai dati con SQLAlchemy Session.",
+      "position": {
+        "x": 1380,
+        "y": 720
+      }
+    },
+    {
+      "id": "doc_entity",
+      "kind": "other",
+      "label": "Entity Doc + sessione DB",
+      "tech": "SQLAlchemy 2.1: core/doc.py, db/session.py",
+      "notes": "Doc -> tabella documents (id UUID PK, name_of_file unique 255, group_number indicizzato, summary 2000 nullable). Engine con pool_pre_ping, SessionLocal, get_db, naming convention per vincoli.",
+      "position": {
+        "x": 1380,
+        "y": 520
+      }
+    },
+    {
+      "id": "postgres",
+      "kind": "database",
+      "label": "PostgreSQL",
+      "tech": "pgvector/pgvector:pg17, porta 5432",
+      "notes": "Volume postgres_data, healthcheck pg_isready. Tabella documents. pgvector pronto ma non ancora usato.",
+      "position": {
+        "x": 1660,
+        "y": 520
+      }
+    },
+    {
+      "id": "alembic",
+      "kind": "other",
+      "label": "Alembic",
+      "tech": "alembic 1.20, backend/alembic/",
+      "notes": "Migrazioni applicate a ogni avvio (alembic upgrade head prima di uvicorn): 27ff64b1a017 crea documents, 14dbc9c2d676 nome univoco. env.py deve importare le entity.",
+      "position": {
+        "x": 1660,
+        "y": 720
+      }
+    },
+    {
+      "id": "config",
+      "kind": "other",
+      "label": "Configurazione (.env)",
+      "tech": "pydantic-settings, core/config.py",
+      "notes": "DATABASE_URL, APP_NAME, CORS_ORIGINS, ANTHROPIC_API_KEY, ANTHROPIC_MODEL=claude-haiku-5-5, ANTHROPIC_EFFORT=low, MCP_URL=http://localhost:8000/mcp. Postgres: POSTGRES_USER/PASSWORD/DB.",
+      "position": {
+        "x": 820,
+        "y": -120
+      }
+    },
+    {
+      "id": "claude_api",
+      "kind": "external",
+      "label": "API Anthropic (Claude)",
+      "tech": "anthropic 2.3 SDK, modello haiku 5.5, effort low",
+      "notes": "Usato da run_agent per orchestrator e sub agenti. Richiede ANTHROPIC_API_KEY.",
+      "position": {
+        "x": 1380,
+        "y": 120
+      }
+    },
+    {
+      "id": "compose",
+      "kind": "other",
+      "label": "Docker Compose",
+      "tech": "docker-compose.yml",
+      "notes": "Servizi db, backend (cartella montata come volume + --reload, depends_on db healthy), frontend (3000:80). Avvio: cp .env.example .env && docker compose up --build.",
+      "position": {
+        "x": 0,
+        "y": 520
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_user_nginx",
+      "from": "user",
+      "to": "nginx",
+      "label": "carica l'app",
+      "protocol": "HTTP :3000"
+    },
+    {
+      "id": "e_nginx_frontend",
+      "from": "nginx",
+      "to": "frontend",
+      "label": "serve build statica"
+    },
+    {
+      "id": "e_user_frontend",
+      "from": "user",
+      "to": "frontend",
+      "label": "scrive nella chat"
+    },
+    {
+      "id": "e_frontend_nginx",
+      "from": "frontend",
+      "to": "nginx",
+      "label": "fetch /api/chat",
+      "protocol": "HTTP/JSON"
+    },
+    {
+      "id": "e_nginx_fastapi",
+      "from": "nginx",
+      "to": "fastapi",
+      "label": "reverse proxy /api/",
+      "protocol": "HTTP :8000"
+    },
+    {
+      "id": "e_fastapi_chat",
+      "from": "fastapi",
+      "to": "chat_api",
+      "label": "include_router"
+    },
+    {
+      "id": "e_fastapi_health",
+      "from": "fastapi",
+      "to": "health_api",
+      "label": "include_router"
+    },
+    {
+      "id": "e_fastapi_doc",
+      "from": "fastapi",
+      "to": "doc_api",
+      "label": "non registrato"
+    },
+    {
+      "id": "e_chat_orch",
+      "from": "chat_api",
+      "to": "orchestrator",
+      "label": "orchestrator.run(message, history)"
+    },
+    {
+      "id": "e_orch_runner",
+      "from": "orchestrator",
+      "to": "runner",
+      "label": "run_agent con local_tools"
+    },
+    {
+      "id": "e_orch_researcher",
+      "from": "orchestrator",
+      "to": "researcher",
+      "label": "ask_researcher"
+    },
+    {
+      "id": "e_orch_archivist",
+      "from": "orchestrator",
+      "to": "archivist",
+      "label": "ask_archivist"
+    },
+    {
+      "id": "e_researcher_runner",
+      "from": "researcher",
+      "to": "runner",
+      "label": "run_agent(get_document_by_name)"
+    },
+    {
+      "id": "e_archivist_runner",
+      "from": "archivist",
+      "to": "runner",
+      "label": "run_agent(add_document)"
+    },
+    {
+      "id": "e_runner_claude",
+      "from": "runner",
+      "to": "claude_api",
+      "label": "messages.create (tool use loop)",
+      "protocol": "HTTPS"
+    },
+    {
+      "id": "e_runner_mcpclient",
+      "from": "runner",
+      "to": "mcp_client",
+      "label": "get_tools / call_tool"
+    },
+    {
+      "id": "e_mcpclient_mcpserver",
+      "from": "mcp_client",
+      "to": "mcp_server",
+      "label": "chiama i tool",
+      "protocol": "MCP streamable HTTP /mcp"
+    },
+    {
+      "id": "e_fastapi_mcpserver",
+      "from": "fastapi",
+      "to": "mcp_server",
+      "label": "mount su '/' + lifespan"
+    },
+    {
+      "id": "e_mcpserver_tools",
+      "from": "mcp_server",
+      "to": "mcp_tools",
+      "label": "@mcp.tool()"
+    },
+    {
+      "id": "e_tools_service",
+      "from": "mcp_tools",
+      "to": "doc_service",
+      "label": "create_doc / get_doc_by_name"
+    },
+    {
+      "id": "e_service_entity",
+      "from": "doc_service",
+      "to": "doc_entity",
+      "label": "Session + Doc"
+    },
+    {
+      "id": "e_entity_pg",
+      "from": "doc_entity",
+      "to": "postgres",
+      "label": "SQL",
+      "protocol": "psycopg 3"
+    },
+    {
+      "id": "e_health_entity",
+      "from": "health_api",
+      "to": "doc_entity",
+      "label": "get_db (SELECT 1)"
+    },
+    {
+      "id": "e_alembic_pg",
+      "from": "alembic",
+      "to": "postgres",
+      "label": "upgrade head all'avvio",
+      "protocol": "SQL"
+    },
+    {
+      "id": "e_alembic_entity",
+      "from": "alembic",
+      "to": "doc_entity",
+      "label": "legge i metadata"
+    },
+    {
+      "id": "e_config_runner",
+      "from": "config",
+      "to": "runner",
+      "label": "modello, effort, API key"
+    },
+    {
+      "id": "e_config_mcpclient",
+      "from": "config",
+      "to": "mcp_client",
+      "label": "MCP_URL"
+    },
+    {
+      "id": "e_config_entity",
+      "from": "config",
+      "to": "doc_entity",
+      "label": "DATABASE_URL"
+    },
+    {
+      "id": "e_compose_nginx",
+      "from": "compose",
+      "to": "nginx",
+      "label": "avvia servizio frontend"
+    },
+    {
+      "id": "e_compose_fastapi",
+      "from": "compose",
+      "to": "fastapi",
+      "label": "avvia servizio backend"
+    },
+    {
+      "id": "e_compose_pg",
+      "from": "compose",
+      "to": "postgres",
+      "label": "avvia servizio db"
+    }
+  ]
+}
