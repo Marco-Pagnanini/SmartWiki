@@ -12,13 +12,13 @@ router = APIRouter(prefix="/api/health", tags=["health"])
 
 @router.get("")
 def health() -> dict:
-    """Verifica che il backend sia attivo."""
+    """Check that the backend is up."""
     return {"status": "ok", "app": settings.APP_NAME}
 
 
 @router.get("/db")
 def health_db(db: Session = Depends(get_db)):
-    """Verifica che il database risponda eseguendo SELECT 1."""
+    """Check that the database answers by running SELECT 1."""
     try:
         db.execute(text("SELECT 1"))
     except SQLAlchemyError:

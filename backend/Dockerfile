@@ -5,7 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Prima le dipendenze, così Docker riusa la cache se cambia solo il codice
+# Dependencies first, so Docker reuses the cache when only the code changes
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -14,5 +14,5 @@ COPY . .
 
 EXPOSE 8000
 
-# Applica le migrazioni mancanti, poi avvia il server
+# Apply pending migrations, then start the server
 CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

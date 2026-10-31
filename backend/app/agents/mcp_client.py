@@ -1,9 +1,9 @@
-"""Ponte tra gli agenti e il server MCP.
+"""Bridge between the agents and the MCP server.
 
-Gli agenti non conoscono i tool in anticipo: li chiedono al server MCP,
-li convertono nel formato dell'API di Claude e inoltrano le chiamate al server.
+Agents do not know the tools in advance: they ask the MCP server for them,
+convert them to the Claude API format and forward the calls to the server.
 
-Uso tipico dentro un agente:
+Typical use inside an agent:
 
     async with connect() as client:
         tools = await get_tools(client, allowed=["get_document_by_name"])
@@ -22,16 +22,16 @@ from app.core.config import settings
 
 @asynccontextmanager
 async def connect() -> AsyncIterator[Client]:
-    """Apre una connessione al server MCP e la chiude all'uscita dal blocco `async with`."""
+    """Open a connection to the MCP server and close it when the `async with` block exits."""
     async with Client(settings.MCP_URL) as client:
         yield client
 
 
 async def get_tools(client: Client, allowed: list[str] | None = None) -> list[dict[str, Any]]:
-    """Restituisce i tool del server nel formato `tools=[...]` dell'API di Claude.
+    """Return the server's tools in the `tools=[...]` format of the Claude API.
 
-    `allowed` limita i tool a quelli elencati (None = tutti). Un nome in `allowed`
-    che il server non ha è quasi sempre un errore di battitura, quindi solleva un errore.
+    `allowed` restricts the tools to the listed ones (None = all). A name in `allowed`
+    that the server does not have is almost always a typo, so it raises an error.
     """
     result = await client.list_tools()
     tools = [
@@ -42,15 +42,15 @@ async def get_tools(client: Client, allowed: list[str] | None = None) -> list[di
     if allowed is not None:
         missing = set(allowed) - {t["name"] for t in tools}
         if missing:
-            raise ValueError(f"Tool non presenti sul server MCP: {sorted(missing)}")
+            raise ValueError(f"Tools not found on the MCP server: {sorted(missing)}")
     return tools
 
 
 async def call_tool(client: Client, name: str, arguments: dict[str, Any]) -> tuple[str, bool]:
-    """Esegue un tool sul server MCP.
+    """Run a tool on the MCP server.
 
-    Restituisce (testo del risultato, is_error): sono i due valori che servono
-    per costruire il `tool_result` da rimandare al modello.
+    Return (result text, is_error): the two values needed to build
+    the `tool_result` sent back to the model.
     """
     result = await client.call_tool(name, arguments)
     text = "\n".join(block.text for block in result.content if block.type == "text")

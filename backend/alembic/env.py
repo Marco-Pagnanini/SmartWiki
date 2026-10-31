@@ -8,8 +8,8 @@ from alembic import context
 from app.core.config import settings
 from app.db.session import Base
 
-# Ogni file che contiene entity va importato qui, altrimenti autogenerate
-# non vede le sue tabelle e genererebbe migrazioni che le cancellano.
+# Every file that defines entities must be imported here, otherwise autogenerate
+# does not see their tables and would generate migrations that drop them.
 import app.core.doc  # noqa: F401
 
 # this is the Alembic Config object, which provides
@@ -21,10 +21,10 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# La connessione arriva da DATABASE_URL (.env), non da alembic.ini
+# The connection comes from DATABASE_URL (.env), not from alembic.ini
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
-# Metadata con tutte le tabelle delle entity: autogenerate la confronta con il DB
+# Metadata with every entity table: autogenerate compares it with the database
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

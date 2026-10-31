@@ -16,9 +16,8 @@ Your reply is read by another agent, not by a human: answer in one or two short 
 If you found the document, report its file name, group number, summary and id.
 If you did not, report the name you searched for and why nothing was found."""
 
-ALLOWED_TOOLS = ["get_document_by_name"]
+ALLOWED_TOOLS = ["get_document_by_name", "get_all_documents"]
 
 
 async def run(task: str) -> str:
-    """Esegue il sub agente ricercatore su un compito e restituisce la sua risposta."""
     return await run_agent(SYSTEM_PROMPT, ALLOWED_TOOLS, task)

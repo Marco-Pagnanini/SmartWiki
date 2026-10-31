@@ -5,17 +5,17 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.core.config import settings
 
-# pool_pre_ping verifica che la connessione sia ancora valida prima di usarla
+# pool_pre_ping checks that the connection is still valid before using it
 engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
 
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 
 class Base(DeclarativeBase):
-    """Classe base per le entity SQLAlchemy."""
+    """Base class for the SQLAlchemy entities."""
 
-    # Nomi automatici per indici e vincoli: senza, Alembic genera migrazioni
-    # con vincoli senza nome che non si possono annullare con downgrade
+    # Automatic names for indexes and constraints: without them Alembic generates
+    # migrations with unnamed constraints that downgrade cannot drop
     metadata = MetaData(
         naming_convention={
             "ix": "ix_%(column_0_label)s",
@@ -28,7 +28,7 @@ class Base(DeclarativeBase):
 
 
 def get_db() -> Generator[Session, None, None]:
-    """Dependency FastAPI: apre una sessione e la chiude a fine richiesta."""
+    """FastAPI dependency: open a session and close it when the request ends."""
     db = SessionLocal()
     try:
         yield db

@@ -3,25 +3,26 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import chat, health
+from app.api import attachment, chat, health
 from app.core.config import settings
 from app.mcp_server import mcp
-from app.tools import doc as doc_tools  # noqa: F401  (registra i tool MCP dei documenti)
+from app.tools import doc as doc_tools  # noqa: F401  (registers the document MCP tools)
+from app.tools import attachment as attachment_tools  # noqa: F401  (registers the attachment MCP tools)
 
-# App HTTP del server MCP; stateless: ogni richiesta è indipendente
+# HTTP app of the MCP server; stateless: every request is independent
 mcp_app = mcp.streamable_http_app(streamable_http_path="/mcp", stateless_http=True)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Il server MCP ha bisogno del suo gestore di sessioni attivo finché gira l'app
+    # The MCP server needs its session manager running for as long as the app runs
     async with mcp.session_manager.run():
         yield
 
 
 app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
 
-# CORS serve solo quando il frontend gira con `npm run dev` fuori da Docker
+# CORS is only needed when the frontend runs with `npm run dev` outside Docker
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -32,8 +33,9 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(chat.router)
+app.include_router(attachment.router)
 
-# Server MCP raggiungibile su http://localhost:8000/mcp. Montato su "/" e per
-# ultimo: le route FastAPI sopra hanno la precedenza, così /mcp non viene
-# rediretto a /mcp/ (molti client MCP non seguono il redirect)
+# MCP server reachable at http://localhost:8000/mcp. Mounted on "/" and last:
+# the FastAPI routes above take precedence, so /mcp is not redirected
+# to /mcp/ (many MCP clients do not follow the redirect)
 app.mount("/", mcp_app)

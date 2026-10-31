@@ -1,4 +1,4 @@
-# Stage 1: build dell'app React
+# Stage 1: build the React app
 FROM node:22-alpine AS build
 
 WORKDIR /app
@@ -9,7 +9,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Stage 2: nginx serve i file statici e fa da proxy verso il backend
+# Stage 2: nginx serves the static files and proxies to the backend
 FROM nginx:alpine
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf

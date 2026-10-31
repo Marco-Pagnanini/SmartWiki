@@ -8,7 +8,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from app.core.doc import Doc
 from app.db.session import SessionLocal
 from app.mcp_server import mcp
-from app.service.doc import create_doc, get_doc_by_name
+from app.service.doc import create_doc, get_doc_by_name, get_all_docs
 
 
 def _to_dict(doc: Doc) -> dict:
@@ -58,3 +58,10 @@ def get_document_by_name(
         if doc is None:
             raise ToolError(f"No document named '{name_of_file}'")
         return _to_dict(doc)
+
+@mcp.tool()
+def get_all_documents() -> list[dict]:
+    """Return a list of all documents in the wiki."""
+    with SessionLocal() as db:
+        docs = get_all_docs(db)
+        return [_to_dict(doc) for doc in docs]

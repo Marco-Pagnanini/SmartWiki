@@ -12,20 +12,20 @@ async def run_agent(
     task: str | list[dict],
     local_tools: dict | None = None,
 ) -> str:
-    """Esegue un agente: chiama Claude e i tool finché l'agente non dà la risposta finale.
+    """Run an agent: call Claude and the tools until the agent gives its final answer.
 
-    `task` è il compito (testo) oppure una conversazione già iniziata
-    ([{"role": "user" | "assistant", "content": ...}, ...], l'ultimo messaggio è dell'utente).
-    `allowed_tools` sono i tool del server MCP che l'agente può usare.
-    `local_tools` sono tool eseguiti qui in Python (es. i sub agenti per l'orchestrator),
-    nel formato {nome: {"description", "input_schema", "handler"}}.
+    `task` is the task (text) or a conversation already in progress
+    ([{"role": "user" | "assistant", "content": ...}, ...], the last message is the user's).
+    `allowed_tools` are the MCP server tools the agent may use.
+    `local_tools` are tools run here in Python (e.g. the sub agents for the orchestrator),
+    in the format {name: {"description", "input_schema", "handler"}}.
     """
     client = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
     local_tools = local_tools or {}
 
     async with connect() as mcp:
         tools = await get_tools(mcp, allowed=allowed_tools)
-        # A Claude si mandano solo nome, descrizione e schema: l'handler resta qui
+        # Claude only receives name, description and schema: the handler stays here
         tools += [
             {"name": name, "description": tool["description"], "input_schema": tool["input_schema"]}
             for name, tool in local_tools.items()
@@ -57,16 +57,16 @@ async def run_agent(
                     })
             messages.append({"role": "user", "content": results})
 
-    raise RuntimeError(f"L'agente non ha finito entro {MAX_TURNS} turni")
+    raise RuntimeError(f"The agent did not finish within {MAX_TURNS} turns")
 
 
 async def _execute_tool(mcp, local_tools: dict, name: str, arguments: dict) -> tuple[str, bool]:
-    """Esegue un tool locale (funzione Python) oppure, se non lo è, un tool del server MCP."""
+    """Run a local tool (a Python function) or, if it is not one, an MCP server tool."""
     if name not in local_tools:
         return await call_tool(mcp, name, arguments)
     try:
         return await local_tools[name]["handler"](**arguments), False
     except Exception as e:
-        # Confine tra agenti: l'errore di un sub agente diventa un risultato di errore
-        # per chi lo ha chiamato, invece di far cadere l'intera esecuzione
+        # Boundary between agents: a sub agent's error becomes an error result
+        # for its caller instead of crashing the whole run
         return f"{type(e).__name__}: {e}", True

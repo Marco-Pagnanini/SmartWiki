@@ -5,3 +5,4 @@ pydantic-settings==2.16.1
 alembic==1.20.1
 mcp==2.3.0
 anthropic==2.3.0
+pypdf==6.21.4

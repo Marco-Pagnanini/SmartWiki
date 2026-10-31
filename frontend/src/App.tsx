@@ -1,192 +1,89 @@
-import { useEffect, useRef, useState } from 'react'
-import type { FormEvent, KeyboardEvent, ReactNode } from 'react'
-import './App.css'
+import { useEffect, useRef, useState } from "react"
 
-type Role = 'user' | 'assistant'
+import { AppHeader } from "@/components/app-header"
+import { ChatComposer } from "@/components/chat-composer"
+import { ChatMessage } from "@/components/chat-message"
+import { PacketFlow } from "@/components/packet-flow"
+import { Button } from "@/components/ui/button"
+import { TooltipProvider } from "@/components/ui/tooltip"
+import { sendMessage, type Message, type UploadedAttachment } from "@/lib/chat"
 
-interface Message {
-  role: Role
-  content: string
-  error?: boolean
-}
+const SUGGESTIONS = ["What can you do?", "Find the document manuale-ferie.pdf", "Add a document to group 3"]
 
-const SUGGESTIONS = [
-  'Cosa sai fare?',
-  'Trova il documento manuale-ferie.pdf',
-  'Aggiungi un nuovo documento alla wiki',
-]
-
-// Markdown minimo per le risposte (grassetto, `codice`, elenchi), senza HTML grezzo
-function renderInline(text: string): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>
-    if (part.startsWith('`') && part.endsWith('`')) return <code key={i}>{part.slice(1, -1)}</code>
-    return part
-  })
-}
-
-function Markdown({ text }: { text: string }) {
-  const blocks: ReactNode[] = []
-  let list: string[] = []
-  const flush = () => {
-    if (list.length) {
-      blocks.push(<ul key={blocks.length}>{list.map((item, i) => <li key={i}>{renderInline(item)}</li>)}</ul>)
-      list = []
-    }
-  }
-  for (const line of text.split('\n')) {
-    const item = line.match(/^\s*[-*]\s+(.*)$/)
-    if (item) {
-      list.push(item[1])
-    } else {
-      flush()
-      if (line.trim()) blocks.push(<p key={blocks.length}>{renderInline(line)}</p>)
-    }
-  }
-  flush()
-  return <>{blocks}</>
-}
-
-function SendIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-      <path fill="currentColor" d="M3.4 20.4 21 12 3.4 3.6l-.01 6.53L15.99 12 3.39 13.87z" />
-    </svg>
-  )
-}
-
-function App() {
+export default function App() {
   const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const [working, setWorking] = useState(false)
+  // The answer waits here until the packet animation has finished its cycle
+  const [result, setResult] = useState<Message | null>(null)
+  const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, loading])
+    endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" })
+  }, [messages, working])
 
-  // La textarea cresce con il testo, fino a un massimo
-  useEffect(() => {
-    const el = inputRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    // Vuota: altezza naturale (una riga); misurarla al primo render può dare valori errati
-    if (input) el.style.height = `${Math.min(el.scrollHeight, 200)}px`
-  }, [input])
-
-  async function send(text: string) {
-    const message = text.trim()
-    if (!message || loading) return
-    // Al backend va solo la conversazione riuscita, senza i messaggi di errore
-    const history = messages.filter((m) => !m.error).map(({ role, content }) => ({ role, content }))
-    setMessages((prev) => [...prev, { role: 'user', content: message }])
-    setInput('')
-    setLoading(true)
+  async function send(text: string, attachment?: UploadedAttachment) {
+    const history = messages
+    setMessages([...history, { role: "user", content: text, attachment }])
+    setResult(null)
+    setWorking(true)
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, history }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : `Errore ${res.status}`)
-      setMessages((prev) => [...prev, { role: 'assistant', content: data.reply }])
+      const reply = await sendMessage(text, history, attachment?.attachment_id)
+      setResult({ role: "assistant", content: reply })
     } catch (e) {
-      const detail = e instanceof Error ? e.message : 'Errore sconosciuto'
-      setMessages((prev) => [...prev, { role: 'assistant', content: `Qualcosa è andato storto: ${detail}`, error: true }])
-    } finally {
-      setLoading(false)
-      inputRef.current?.focus()
+      const detail = e instanceof Error ? e.message : "Unknown error"
+      setResult({ role: "assistant", content: detail, error: true })
     }
   }
 
-  function onSubmit(e: FormEvent) {
-    e.preventDefault()
-    send(input)
+  function showResult() {
+    if (result) setMessages((prev) => [...prev, result])
+    setResult(null)
+    setWorking(false)
   }
 
-  // Invio manda il messaggio, Maiusc+Invio va a capo
-  function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-      e.preventDefault()
-      send(input)
-    }
-  }
-
-  const empty = messages.length === 0
+  const empty = messages.length === 0 && !working
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <img src="/logo.png" alt="" className="topbar-logo" />
-        <span className="topbar-title">Smart Wiki</span>
-      </header>
+    <TooltipProvider>
+      <div className="flex h-dvh flex-col">
+        <AppHeader canReset={messages.length > 0 && !working} onReset={() => setMessages([])} />
 
-      <main className={`chat ${empty ? 'chat-empty' : ''}`}>
         {empty ? (
-          <section className="welcome">
-            <img src="/logo.png" alt="Logo Smart Wiki" className="welcome-logo" />
-            <h1 className="welcome-title">Ciao!</h1>
-            <p className="welcome-subtitle">Come posso aiutarti con la wiki oggi?</p>
-            <div className="suggestions">
-              {SUGGESTIONS.map((s) => (
-                <button key={s} type="button" className="suggestion" onClick={() => send(s)}>
-                  {s}
-                </button>
-              ))}
-            </div>
-          </section>
-        ) : (
-          <div className="messages">
-            {messages.map((m, i) =>
-              m.role === 'user' ? (
-                <div key={i} className="msg msg-user">
-                  <div className="bubble">{m.content}</div>
-                </div>
-              ) : (
-                <div key={i} className={`msg msg-assistant ${m.error ? 'msg-error' : ''}`}>
-                  <img src="/logo.png" alt="" className="avatar" />
-                  <div className="answer">
-                    <Markdown text={m.content} />
-                  </div>
-                </div>
-              ),
-            )}
-            {loading && (
-              <div className="msg msg-assistant" aria-live="polite">
-                <img src="/logo.png" alt="" className="avatar avatar-thinking" />
-                <div className="answer thinking">
-                  <span className="shimmer" />
-                  <span className="shimmer short" />
-                </div>
+          <main className="flex flex-1 flex-col items-center justify-center px-4 pb-[10vh]">
+            <div className="w-full max-w-3xl">
+              <h1 className="mb-7 text-center text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
+                What can I help with?
+              </h1>
+              <ChatComposer disabled={working} onSend={send} />
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                {SUGGESTIONS.map((s) => (
+                  <Button key={s} variant="outline" className="rounded-full px-4 text-muted-foreground" onClick={() => send(s)}>
+                    {s}
+                  </Button>
+                ))}
               </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
+            </div>
+          </main>
+        ) : (
+          <>
+            <main className="flex-1 overflow-y-auto">
+              <div className="mx-auto flex max-w-3xl flex-col gap-8 px-4 pt-4 pb-10">
+                {messages.map((m, i) => (
+                  <ChatMessage key={i} message={m} />
+                ))}
+                {working && <PacketFlow done={result !== null} onFinish={showResult} />}
+                <div ref={endRef} />
+              </div>
+            </main>
+            <div className="mx-auto w-full max-w-3xl px-4 pb-3">
+              <ChatComposer disabled={working} onSend={send} />
+              <p className="mt-2 text-center text-xs text-muted-foreground">
+                The agents can make mistakes. Check important details.
+              </p>
+            </div>
+          </>
         )}
-      </main>
-
-      <footer className="composer-area">
-        <form className="composer" onSubmit={onSubmit}>
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder="Chiedi a Smart Wiki"
-            rows={1}
-            aria-label="Messaggio"
-            autoFocus
-          />
-          <button type="submit" className="send" disabled={!input.trim() || loading} aria-label="Invia">
-            <SendIcon />
-          </button>
-        </form>
-        <p className="disclaimer">Smart Wiki può commettere errori: verifica le informazioni importanti.</p>
-      </footer>
-    </div>
+      </div>
+    </TooltipProvider>
   )
 }
-
-export default App
